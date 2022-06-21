@@ -7,7 +7,7 @@
 //Defines
 #define PLUGIN_NAME "[TF2] Fortressland"
 #define PLUGIN_DESCRIPTION "A Dungeon Land-like gamemode for Team Fortress 2."
-#define PLUGIN_VERSION "1.0.2"
+#define PLUGIN_VERSION "1.0.3"
 
 #define NO_MASTER -1
 
@@ -108,28 +108,26 @@ enum struct PlayerData {
 		this.ApplyClass();
 	}
 
+	bool HasClass() {
+		return strlen(this.class) > 0;
+	}
+
+	bool IsClass(const char[] class) {
+		return StrEqual(this.class, class, false);
+	}
+
 	void ApplyClass() {
-		if (StrEqual(this.class, "fighter", false)) {
-			TF2_SetPlayerClass(this.client, TFClass_Scout);
-			TF2_RegeneratePlayer(this.client);
+		// menu.AddItem("knight", "Knight"); //DemoMan
+		// menu.AddItem("fighter", "Fighter"); //Heavy
+		// menu.AddItem("outrider", "Outrider"); //Scout
+		// menu.AddItem("ranger", "Ranger"); //Sniper
+		// menu.AddItem("cleric", "Cleric"); //Medic
+		// menu.AddItem("rogue", "Rogue"); //Spy
+		// menu.AddItem("mage", "Mage"); //Pyro
+		// menu.AddItem("samurai", "Samurai"); //Soldier
 
-			TF2_RemoveAllWeapons(this.client);
-			TF2_RemoveAllWearables(this.client);
+		if (StrEqual(this.class, "knight", false)) {
 
-			TF2_GiveItem(this.client, "tf_weapon_handgun_scout_primary", 220);
-			TF2_GiveItem(this.client, "tf_weapon_lunchbox_drink", 163);
-			TF2_GiveItem(this.client, "tf_weapon_bat", 452);
-		} else if (StrEqual(this.class, "rogue", false)) {
-			TF2_SetPlayerClass(this.client, TFClass_Spy);
-			TF2_RegeneratePlayer(this.client);
-
-			TF2_RemoveAllWeapons(this.client);
-			TF2_RemoveAllWearables(this.client);
-
-			TF2_GiveItem(this.client, "tf_weapon_revolver", 525);
-			TF2_GiveItem(this.client, "tf_weapon_builder", 735);
-			TF2_GiveItem(this.client, "tf_weapon_knife", 461);
-		} else if (StrEqual(this.class, "knight", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_DemoMan);
 			TF2_RegeneratePlayer(this.client);
 
@@ -141,7 +139,32 @@ enum struct PlayerData {
 			int shield = TF2_GiveItem(this.client, "tf_wearable_demoshield", 131, TF2Quality_Unique, 10, "60 ; 0.5 ; 64 ; 0.6");
 			Call_Wearable(this.client, shield);
 			TF2_GiveItem(this.client, "tf_weapon_sword", 132);
+
+		} else if (StrEqual(this.class, "fighter", false)) {
+
+			TF2_SetPlayerClass(this.client, TFClass_Heavy);
+			TF2_RegeneratePlayer(this.client);
+
+			TF2_RemoveAllWeapons(this.client);
+			TF2_RemoveAllWearables(this.client);
+
+			TF2_GiveItem(this.client, "tf_weapon_lunchbox", 433);
+			TF2_GiveItem(this.client, "tf_weapon_fists", 331);
+
+		} else if (StrEqual(this.class, "outrider", false)) {
+
+			TF2_SetPlayerClass(this.client, TFClass_Scout);
+			TF2_RegeneratePlayer(this.client);
+
+			TF2_RemoveAllWeapons(this.client);
+			TF2_RemoveAllWearables(this.client);
+
+			TF2_GiveItem(this.client, "tf_weapon_handgun_scout_primary", 220);
+			TF2_GiveItem(this.client, "tf_weapon_lunchbox_drink", 163);
+			TF2_GiveItem(this.client, "tf_weapon_bat", 452);
+
 		} else if (StrEqual(this.class, "ranger", false)) {
+
 			TF2_SetPlayerClass(this.client, TFClass_Sniper);
 			TF2_RegeneratePlayer(this.client);
 
@@ -152,7 +175,9 @@ enum struct PlayerData {
 			int shield = TF2_GiveItem(this.client, "tf_wearable", 231, TF2Quality_Unique, 10, "26 ; 25");
 			Call_Wearable(this.client, shield);
 			TF2_GiveItem(this.client, "tf_weapon_club", 171);
+
 		} else if (StrEqual(this.class, "cleric", false)) {
+
 			TF2_SetPlayerClass(this.client, TFClass_Medic);
 			TF2_RegeneratePlayer(this.client);
 
@@ -162,6 +187,39 @@ enum struct PlayerData {
 			TF2_GiveItem(this.client, "tf_weapon_crossbow", 305);
 			//TF2_GiveItem(this.client, "tf_weapon_lunchbox_drink", 163);
 			TF2_GiveItem(this.client, "tf_weapon_bonesaw", 413);
+
+		} else if (StrEqual(this.class, "rogue", false)) {
+
+			TF2_SetPlayerClass(this.client, TFClass_Spy);
+			TF2_RegeneratePlayer(this.client);
+
+			TF2_RemoveAllWeapons(this.client);
+			TF2_RemoveAllWearables(this.client);
+
+			TF2_GiveItem(this.client, "tf_weapon_revolver", 525);
+			TF2_GiveItem(this.client, "tf_weapon_builder", 735);
+			TF2_GiveItem(this.client, "tf_weapon_knife", 461);
+
+		} else if (StrEqual(this.class, "mage", false)) {
+
+			TF2_SetPlayerClass(this.client, TFClass_Pyro);
+			TF2_RegeneratePlayer(this.client);
+
+			TF2_RemoveAllWeapons(this.client);
+			TF2_RemoveAllWearables(this.client);
+
+			TF2_GiveItem(this.client, "tf_weapon_slap", 1181);
+
+		} else if (StrEqual(this.class, "samurai", false)) {
+
+			TF2_SetPlayerClass(this.client, TFClass_Soldier);
+			TF2_RegeneratePlayer(this.client);
+
+			TF2_RemoveAllWeapons(this.client);
+			TF2_RemoveAllWearables(this.client);
+
+			TF2_GiveItem(this.client, "tf_weapon_buff_item", 354);
+			TF2_GiveItem(this.client, "tf_weapon_katana", 357);
 		}
 
 		TF2_RemoveCondition(this.client, TFCond_FreezeInput);
@@ -210,10 +268,21 @@ enum struct Master {
 		}
 
 		this.client = client;
+		this.Setup();
+	}
+
+	void Setup() {
+		if (this.client == NO_MASTER) {
+			return;
+		}
 
 		if (IsPlayerAlive(this.client)) {
 			g_PlayerData[this.client].SetPoints(100);
-			TF2_SetTeam(this.client, TFTeam_Blue);
+			if (TF2_GetClientTeam(this.client) != TFTeam_Blue) {
+
+				TF2_SetTeam(this.client, TFTeam_Blue);
+				TF2_RespawnPlayer(this.client);
+			}
 			TF2_SetPlayerClass(this.client, TFClass_Engineer);
 			TF2_SentryTarget(this.client, false);
 		}
@@ -231,7 +300,7 @@ enum struct Master {
 			TF2_SetTeam(this.client, TFTeam_Red);
 			TF2_SetPlayerClass(this.client, TFClass_Scout);
 			TF2_SentryTarget(this.client, true);
-			TF2_RegeneratePlayer(this.client);
+			TF2_RespawnPlayer(this.client);
 		}
 
 		this.client = NO_MASTER;
@@ -246,6 +315,8 @@ Master g_Master;
 #define MAX_BUTTONS 25
 int g_LastButtons[MAXPLAYERS + 1];
 
+bool g_Late;
+
 /*****************************/
 //Plugin Info
 public Plugin myinfo = {
@@ -256,10 +327,15 @@ public Plugin myinfo = {
 	url = "https://scoutshideaway.tf/"
 };
 
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	g_Late = late;
+	return APLRes_Success;
+}
+
 public void OnPluginStart() {
 	convar_DistanceCheck = CreateConVar("sm_fortressland_distancecheck", "3000.0");
 
-	RegAdminCmd("sm_classes", Command_Classes, ADMFLAG_ROOT, "Opens the classes menu.");
+	RegConsoleCmd("sm_classes", Command_Classes, "Opens the classes menu.");
 	RegAdminCmd("sm_setmaster", Command_SetMaster, ADMFLAG_ROOT, "Sets a player to game master.");
 
 	g_PointsHud = new Hud();
@@ -277,13 +353,13 @@ public void OnPluginStart() {
 	}
 
 	HookEvent("player_spawn", Event_OnPlayerSpawn);
+	HookEvent("player_changeclass", Event_OnPlayerChangeClass);
 	HookEvent("teamplay_round_start", Event_OnRoundStart);
 	HookEvent("teamplay_round_win", Event_OnRoundEnd);
 
 	AddCommandListener(Listener_VoiceMenu, "voicemenu");
 
 	g_Master.Init();
-	g_Master.Find();
 
 	Handle gamedata = LoadGameConfigFile("sm-tf2.games");
 
@@ -305,6 +381,12 @@ public void OnPluginStart() {
 		if (GetEntityClassname(entity, class, sizeof(class))) {
 			OnEntityCreated(entity, class);
 		}
+	}
+
+	if (g_Late) {
+		g_Late = false;
+		ServerCommand("mp_restartgame 1");
+		//StartRound();
 	}
 }
 
@@ -379,18 +461,43 @@ public void OnClientDisconnect_Post(int client) {
 }
 
 public void Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
-	int client = GetClientOfUserId(event.GetInt("userid"));
-	TF2_AddCondition(client, TFCond_FreezeInput, TFCondDuration_Infinite);
-	CreateTimer(2.0, Timer_OpenClassMenu, client);
+	CreateTimer(0.2, Timer_DelaySpawn, event.GetInt("userid"), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_OpenClassMenu(Handle timer, any client) {
-	if (g_Master.client != client) {
-		OpenClassesMenu(client);
+public Action Timer_DelaySpawn(Handle timer, any data) {
+	int client;
+	if ((client = GetClientOfUserId(data)) > 0 && IsClientInGame(client) && IsPlayerAlive(client)) {
+		if (g_Master.client == client) {
+			g_Master.Setup();
+		} else {
+			CreateTimer(2.0, Timer_OpenClassMenu, data, TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	
+	return Plugin_Continue;
+}
+
+public Action Timer_OpenClassMenu(Handle timer, any data) {
+	int client;
+	if ((client = GetClientOfUserId(data)) > 0 && IsClientInGame(client) && IsPlayerAlive(client) && g_Master.client != client) {
+		if (g_PlayerData[client].HasClass()) {
+			g_PlayerData[client].SetClass(g_PlayerData[client].class);
+		} else {
+			TF2_AddCondition(client, TFCond_FreezeInput, TFCondDuration_Infinite);
+			OpenClassesMenu(client);
+		}
 	}
 }
 
+public void Event_OnPlayerChangeClass(Event event, const char[] name, bool dontBroadcast) {
+	CreateTimer(0.2, Timer_DelaySpawn, event.GetInt("userid"), TIMER_FLAG_NO_MAPCHANGE);
+}
+
 public Action Command_Classes(int client, int args) {
+	if (client < 1) {
+		return Plugin_Handled;
+	}
+
 	OpenClassesMenu(client);
 	return Plugin_Handled;
 }
@@ -399,11 +506,14 @@ void OpenClassesMenu(int client) {
 	Menu menu = new Menu(MenuHandler_Classes);
 	menu.SetTitle("Choose a class: (required to move)");
 
-	menu.AddItem("fighter", "Fighter (Scout w/ The Shortstop)");
-	menu.AddItem("rogue", "Rogue (Spy w/ The Diamondback)");
-	menu.AddItem("knight", "Knight (Demo w/ The Eyelander)");
-	menu.AddItem("ranger", "Ranger (Sniper w/ The Huntsman)");
-	menu.AddItem("cleric", "Cleric (Medic w/ The Crusader's Crossbow)");
+	menu.AddItem("knight", "Knight"); //DemoMan
+	menu.AddItem("fighter", "Fighter"); //Heavy
+	menu.AddItem("outrider", "Outrider"); //Scout
+	menu.AddItem("ranger", "Ranger"); //Sniper
+	menu.AddItem("cleric", "Cleric"); //Medic
+	menu.AddItem("rogue", "Rogue"); //Spy
+	menu.AddItem("mage", "Mage"); //Pyro
+	menu.AddItem("samurai", "Samurai"); //Soldier
 
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -413,13 +523,65 @@ public int MenuHandler_Classes(Menu menu, MenuAction action, int param1, int par
 		case MenuAction_Select: {
 			char sClass[32];
 			menu.GetItem(param2, sClass, sizeof(sClass));
-			g_PlayerData[param1].SetClass(sClass);
+
+			OpenClassMenu(param1, sClass);
 		}
 		case MenuAction_End: {
 			delete menu;
 		}
 	}
 }
+
+void OpenClassMenu(int client, const char[] class) {
+	Menu menu = new Menu(MenuHandler_Class);
+	menu.SetTitle("Class - %s:", class);
+
+	if (StrEqual(class, "knight", false)) {
+		menu.AddItem("", ": Demo with Sword.\nMedium DPS/Medium HP/High Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "fighter", false)) {
+		menu.AddItem("", ": Heavy with Gloves.\nMedium DPS/High HP/Medium Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "outrider", false)) {
+		menu.AddItem("", ": Scout with Shortstop.\nHigh DPS/Low HP/Low Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "ranger", false)) {
+		menu.AddItem("", ": Sniper with Bow.\nHigh Ranged DPS/Low HP/Low Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "cleric", false)) {
+		menu.AddItem("", ": Medic with Crossbow.\nLow DPS/Low HP/Medium Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "rogue", false)) {
+		menu.AddItem("", ": Spy with Diamond Back.\nHigh Melee DPS/High HP/Low Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "mage", false)) {
+		menu.AddItem("", ": Pyro with Spells.\nHigh DPS/Medium HP/Low Armor", ITEMDRAW_DISABLED);
+	} else if (StrEqual(class, "samurai", false)) {
+		menu.AddItem("", ": Soldier with Katana.\nHigh DPS/Medium HP/Medium Armor", ITEMDRAW_DISABLED);
+	}
+
+	menu.AddItem(class, "Set Class", GameRules_GetProp("m_bInSetup") ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+
+	menu.ExitBackButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int MenuHandler_Class(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			char class[64];
+			menu.GetItem(param2, class, sizeof(class));
+
+			if (GameRules_GetProp("m_bInSetup")) {
+				g_PlayerData[param1].SetClass(class);
+			}
+
+			OpenClassMenu(param1, class);
+		}
+		case MenuAction_Cancel: {
+			OpenClassesMenu(param1);
+		}
+		case MenuAction_End: {
+			delete menu;
+		}
+	}
+}
+
+
 
 public Action OnTakeDamage(int victim, int& attacker, int& inflictor, float& damage, int& damagetype, int& weapon, float damageForce[3], float damagePosition[3], int damagecustom) {
 	if (victim == g_Master.client || victim == attacker) {
@@ -431,10 +593,15 @@ public Action OnTakeDamage(int victim, int& attacker, int& inflictor, float& dam
 }
 
 public void Event_OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
+	StartRound();
+}
+
+void StartRound() {
 	for (int i = 1; i <= MaxClients; i++) {
 		if (IsClientInGame(i) && GetClientTeam(i) > 1) {
 			g_PlayerData[i].SetPoints(50);
 			TF2_SetTeam(i, TFTeam_Red);
+			TF2_RespawnPlayer(i);
 		}
 	}
 	
@@ -573,6 +740,11 @@ public int MenuHandler_DungeonMaster(Menu menu, MenuAction action, int param1, i
 	switch (action) {
 		case MenuAction_Select: {
 			if (g_Master.client != param1) {
+				return;
+			}
+
+			if (GameRules_GetProp("m_bInSetup")) {
+				OpenDungeonMasterMenu(param1);
 				return;
 			}
 			
