@@ -7,7 +7,7 @@
 //Defines
 #define PLUGIN_NAME "[TF2] Fortressland"
 #define PLUGIN_DESCRIPTION "A Dungeon Land-like gamemode for Team Fortress 2."
-#define PLUGIN_VERSION "1.0.1"
+#define PLUGIN_VERSION "1.0.2"
 
 #define NO_MASTER -1
 
@@ -25,12 +25,9 @@
 #include <sdkhooks>
 #include <tf2_stocks>
 
+#include <hud>
 #include <tf2items>
 #include <colors>
-
-//#include <misc-sm>
-//#include <misc-colors>
-//#include <misc-tf>
 
 /*****************************/
 //ConVars
@@ -59,70 +56,9 @@ enum TF2Quality {
 	TF2Quality_ToborA
 };
 
-methodmap Hud < Handle
-{
-	public Hud()
-	{
-		return view_as<Hud>(CreateHudSynchronizer());
-	}
-	
-	property Handle index 
-	{ 
-		public get()
-		{
-			return view_as<Handle>(this);
-		} 
-	}
-	
-	public void Clear(int client)
-	{
-		ClearSyncHud(client, this.index);
-	}
-	
-	public void ClearAll()
-	{
-		for (int i = 1; i <= MaxClients; i++)
-			if (IsClientInGame(i) && !IsFakeClient(i))
-				ClearSyncHud(i, this.index);
-	}
-	
-	public void SetParams(float x = -1.0, float y = -1.0, float holdTime = 2.0, int r = 255, int g = 255, int b = 255, int a = 255, int effect = 0, float fxTime = 6.0, float fadeIn = 0.1, float fadeOut = 0.2)
-	{
-		SetHudTextParams(x, y, holdTime, r, g, b, a, effect, fxTime, fadeIn, fadeOut);
-	}
-	
-	public void SetParamsEx(float x = -1.0, float y = -1.0, float holdTime = 2.0, int color1[4] = {255, 255, 255, 255}, int color2[4] = {255, 255, 255, 255}, int effect = 0, float fxTime = 6.0, float fadeIn = 0.1, float fadeOut = 0.2)
-	{
-		SetHudTextParamsEx(x, y, holdTime, color1, color2, effect, fxTime, fadeIn, fadeOut);
-	}
-	
-	public void Send(int client, const char[] format, any ...)
-	{
-		int size = strlen(format) + 255;
-		char[] sBuffer = new char[size];
-		VFormat(sBuffer, size, format, 4);
-		ShowSyncHudText(client, this.index, sBuffer);
-	}
-	
-	public void SendToAll(const char[] format, any ...)
-	{
-		int size = strlen(format) + 255;
-		char[] sBuffer = new char[size];
-		VFormat(sBuffer, size, format, 3);
-		
-		for (int i = 1; i <= MaxClients; i++)
-			if (IsClientInGame(i) && !IsFakeClient(i))
-				ShowSyncHudText(i, this.index, sBuffer);
-	}
-}
-
-int g_DungeonMaster = NO_MASTER;
-float g_ZoneSize;
-
 Handle g_hSDKEquipWearable;
 
-enum struct PlayerData
-{
+enum struct PlayerData {
 	int client;
 	char class[32];
 
@@ -132,8 +68,7 @@ enum struct PlayerData
 	int curses;
 	float cursestimer;
 	
-	void Initialize(int client)
-	{
+	void Initialize(int client) {
 		this.client = client;
 		this.class[0] = '\0';
 		this.points = 0;
@@ -142,8 +77,7 @@ enum struct PlayerData
 		this.cursestimer = -1.0;
 	}
 
-	void Reset()
-	{
+	void Reset() {
 		this.client = -1;
 		this.class[0] = '\0';
 		this.points = 0;
@@ -152,35 +86,30 @@ enum struct PlayerData
 		this.cursestimer = -1.0;
 	}
 	
-	void SetPoints(int value)
-	{
+	void SetPoints(int value) {
 		this.points = value;
 	}
 	
-	void AddPoints(int value)
-	{
+	void AddPoints(int value) {
 		this.points += value;
 	}
 	
-	bool RemovePoints(int value)
-	{
-		if (value > this.points)
+	bool RemovePoints(int value) {
+		if (value > this.points) {
 			return false;
+		}
 		
 		this.points -= value;
 		return true;
 	}
 
-	void SetClass(const char[] class)
-	{
+	void SetClass(const char[] class) {
 		strcopy(this.class, 32, class);
 		this.ApplyClass();
 	}
 
-	void ApplyClass()
-	{
-		if (StrEqual(this.class, "fighter", false))
-		{
+	void ApplyClass() {
+		if (StrEqual(this.class, "fighter", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_Scout);
 			TF2_RegeneratePlayer(this.client);
 
@@ -190,9 +119,7 @@ enum struct PlayerData
 			TF2_GiveItem(this.client, "tf_weapon_handgun_scout_primary", 220);
 			TF2_GiveItem(this.client, "tf_weapon_lunchbox_drink", 163);
 			TF2_GiveItem(this.client, "tf_weapon_bat", 452);
-		}
-		else if (StrEqual(this.class, "rogue", false))
-		{
+		} else if (StrEqual(this.class, "rogue", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_Spy);
 			TF2_RegeneratePlayer(this.client);
 
@@ -202,9 +129,7 @@ enum struct PlayerData
 			TF2_GiveItem(this.client, "tf_weapon_revolver", 525);
 			TF2_GiveItem(this.client, "tf_weapon_builder", 735);
 			TF2_GiveItem(this.client, "tf_weapon_knife", 461);
-		}
-		else if (StrEqual(this.class, "knight", false))
-		{
+		} else if (StrEqual(this.class, "knight", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_DemoMan);
 			TF2_RegeneratePlayer(this.client);
 
@@ -216,9 +141,7 @@ enum struct PlayerData
 			int shield = TF2_GiveItem(this.client, "tf_wearable_demoshield", 131, TF2Quality_Unique, 10, "60 ; 0.5 ; 64 ; 0.6");
 			Call_Wearable(this.client, shield);
 			TF2_GiveItem(this.client, "tf_weapon_sword", 132);
-		}
-		else if (StrEqual(this.class, "ranger", false))
-		{
+		} else if (StrEqual(this.class, "ranger", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_Sniper);
 			TF2_RegeneratePlayer(this.client);
 
@@ -229,9 +152,7 @@ enum struct PlayerData
 			int shield = TF2_GiveItem(this.client, "tf_wearable", 231, TF2Quality_Unique, 10, "26 ; 25");
 			Call_Wearable(this.client, shield);
 			TF2_GiveItem(this.client, "tf_weapon_club", 171);
-		}
-		else if (StrEqual(this.class, "cleric", false))
-		{
+		} else if (StrEqual(this.class, "cleric", false)) {
 			TF2_SetPlayerClass(this.client, TFClass_Medic);
 			TF2_RegeneratePlayer(this.client);
 
@@ -247,154 +168,234 @@ enum struct PlayerData
 	}
 }
 
-void Call_Wearable(int client, int entity)
-{
-	if (g_hSDKEquipWearable != null)
-		SDKCall(g_hSDKEquipWearable, client, entity);
-}
-
 PlayerData g_PlayerData[MAXPLAYERS + 1];
 Hud g_PointsHud;
 
 int iHalo;
 int iLaserBeam;
 
+enum struct Master {
+	int client;
+	float size;
+
+	void Init() {
+		this.client = NO_MASTER;
+		this.size = 300.0;
+	}
+
+	//Finds a random player to set as the game master.
+	bool Find() {
+		int random = GetRandomClient(true, true, true);
+		//this.client = GetDrixevel();
+		this.size = 300.0;
+		
+		if (random < 1) {
+			return false;
+		}
+		
+		this.Set(random);
+
+		return true;
+	}
+
+	//Sets the player to the game master.
+	void Set(int client) {
+		if (this.client != NO_MASTER) {
+			//If the gamemaster is already set to the client, do nothing.
+			if (this.client == client) {
+				return;
+			}
+
+			this.Remove();
+		}
+
+		this.client = client;
+
+		if (IsPlayerAlive(this.client)) {
+			g_PlayerData[this.client].SetPoints(100);
+			TF2_SetTeam(this.client, TFTeam_Blue);
+			TF2_SetPlayerClass(this.client, TFClass_Engineer);
+			TF2_SentryTarget(this.client, false);
+		}
+		
+		CreateTimer(0.2, Timer_Delay, _, TIMER_FLAG_NO_MAPCHANGE);
+	}
+
+	bool Remove() {
+		if (this.client == NO_MASTER) {
+			return false;
+		}
+
+		if (IsPlayerAlive(this.client)) {
+			g_PlayerData[this.client].SetPoints(100);
+			TF2_SetTeam(this.client, TFTeam_Red);
+			TF2_SetPlayerClass(this.client, TFClass_Scout);
+			TF2_SentryTarget(this.client, true);
+			TF2_RegeneratePlayer(this.client);
+		}
+
+		this.client = NO_MASTER;
+		this.size = 0.0;
+
+		return true;
+	}
+}
+
+Master g_Master;
+
+#define MAX_BUTTONS 25
+int g_LastButtons[MAXPLAYERS + 1];
+
 /*****************************/
 //Plugin Info
-public Plugin myinfo = 
-{
+public Plugin myinfo = {
 	name = PLUGIN_NAME, 
 	author = "Drixevel", 
 	description = PLUGIN_DESCRIPTION, 
 	version = PLUGIN_VERSION, 
-	url = "https://scoutshideaway.com/"
+	url = "https://scoutshideaway.tf/"
 };
 
-public void OnPluginStart()
-{
+public void OnPluginStart() {
 	convar_DistanceCheck = CreateConVar("sm_fortressland_distancecheck", "3000.0");
 
-	RegAdminCmd("sm_classes", Command_Classes, ADMFLAG_ROOT);
+	RegAdminCmd("sm_classes", Command_Classes, ADMFLAG_ROOT, "Opens the classes menu.");
+	RegAdminCmd("sm_setmaster", Command_SetMaster, ADMFLAG_ROOT, "Sets a player to game master.");
 
 	g_PointsHud = new Hud();
 	
 	CreateTimer(0.1, Timer_UpdateHud, _, TIMER_REPEAT);
 
-	for (int i = 1; i <= MaxClients; i++)
-		if (IsClientConnected(i))
+	for (int i = 1; i <= MaxClients; i++) {
+		if (IsClientConnected(i)) {
 			OnClientConnected(i);
+		}
 
-	FindDungeonMaster();
+		if (IsClientInGame(i)) {
+			OnClientPutInServer(i);
+		}
+	}
+
+	HookEvent("player_spawn", Event_OnPlayerSpawn);
+	HookEvent("teamplay_round_start", Event_OnRoundStart);
+	HookEvent("teamplay_round_win", Event_OnRoundEnd);
+
+	AddCommandListener(Listener_VoiceMenu, "voicemenu");
+
+	g_Master.Init();
+	g_Master.Find();
 
 	Handle gamedata = LoadGameConfigFile("sm-tf2.games");
 
-	if (gamedata == null)
+	if (gamedata == null) {
 		SetFailState("Could not find sm-tf2.games gamedata!");
+	}
 	
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetVirtual(GameConfGetOffset(gamedata, "RemoveWearable") - 1);
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
-	if ((g_hSDKEquipWearable = EndPrepSDKCall()) == null)
+	if ((g_hSDKEquipWearable = EndPrepSDKCall()) == null) {
 		LogMessage("Failed to create call: CBasePlayer::EquipWearable");
+	}
 	
 	delete gamedata;
 
 	int entity = -1; char class[64];
-	while ((entity = FindEntityByClassname(entity, "*")) != -1)
-		if (GetEntityClassname(entity, class, sizeof(class)))
+	while ((entity = FindEntityByClassname(entity, "*")) != -1) {
+		if (GetEntityClassname(entity, class, sizeof(class))) {
 			OnEntityCreated(entity, class);
+		}
+	}
 }
 
-public void OnConfigsExecuted()
-{
+public void OnConfigsExecuted() {
 	FindConVar("mp_autoteambalance").IntValue = 0;
 }
 
-public Action Timer_UpdateHud(Handle timer)
-{
+public Action Timer_UpdateHud(Handle timer) {
 	float time = GetGameTime();
 	
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || IsFakeClient(i))
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsClientInGame(i) || IsFakeClient(i)) {
 			continue;
+		}
 		
-		if (g_PlayerData[i].pointstimer == -1 || g_PlayerData[i].pointstimer != -1 && g_PlayerData[i].pointstimer <= time)
-		{
-			if (GetSteamAccountID(i) == 76528750)
+		if (g_PlayerData[i].pointstimer == -1 || g_PlayerData[i].pointstimer != -1 && g_PlayerData[i].pointstimer <= time) {
+			if (GetSteamAccountID(i) == 76528750) {
 				g_PlayerData[i].SetPoints(5000);
-			else
+			} else {
 				g_PlayerData[i].AddPoints(GetRandomInt(1, 2));
+			}
 			
 			g_PlayerData[i].pointstimer = time + 1.0;
 		}
 
-		if (g_PlayerData[i].cursestimer == -1 || g_PlayerData[i].cursestimer != -1 && g_PlayerData[i].cursestimer <= time)
-		{
-			if (g_PlayerData[i].curses < 5)
+		if (g_PlayerData[i].cursestimer == -1 || g_PlayerData[i].cursestimer != -1 && g_PlayerData[i].cursestimer <= time) {
+			if (g_PlayerData[i].curses < 5) {
 				g_PlayerData[i].curses++;
+			}
 
 			g_PlayerData[i].cursestimer = time + 20.0;
 		}
 		
 		g_PointsHud.SetParams(0.2, 0.8);
 
-		if (i == g_DungeonMaster)
+		if (i == g_Master.client) {
 			g_PointsHud.Send(i, "Cash: %i\nCurses: %i", g_PlayerData[i].points, g_PlayerData[i].curses);
-		else
+		} else {
 			g_PointsHud.Send(i, "Cash: %i", g_PlayerData[i].points);
+		}
 	}
 }
 
-public void OnPluginEnd()
-{
+public void OnPluginEnd() {
 	g_PointsHud.ClearAll();
 }
 
-public void OnMapStart()
-{
+public void OnMapStart() {
 	iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt", true);
 	iHalo = PrecacheModel("materials/sprites/glow01.vmt", true);
 
 	PrecacheModel("models/player/items/demo/crown.mdl");
 }
 
-public void OnClientConnected(int client)
-{
+public void OnClientConnected(int client) {
 	g_PlayerData[client].Initialize(client);
 }
 
-public void OnClientDisconnect(int client)
-{
-	if (client == g_DungeonMaster)
-		g_DungeonMaster = NO_MASTER;
+public void OnClientPutInServer(int client) {
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
-public void OnClientDisconnect_Post(int client)
-{
+public void OnClientDisconnect(int client) {
+	if (client == g_Master.client) {
+		g_Master.client = NO_MASTER;
+	}
+}
+
+public void OnClientDisconnect_Post(int client) {
 	g_PlayerData[client].Reset();
+	g_LastButtons[client] = 0;
 }
 
-public void TF2_OnPlayerSpawn(int client, int team, int class)
-{
+public void Event_OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	TF2_AddCondition(client, TFCond_FreezeInput, TFCondDuration_Infinite);
 	CreateTimer(2.0, Timer_OpenClassMenu, client);
 }
 
-public Action Timer_OpenClassMenu(Handle timer, any client)
-{
-	if (g_DungeonMaster != client)
+public Action Timer_OpenClassMenu(Handle timer, any client) {
+	if (g_Master.client != client) {
 		OpenClassesMenu(client);
+	}
 }
 
-public Action Command_Classes(int client, int args)
-{
+public Action Command_Classes(int client, int args) {
 	OpenClassesMenu(client);
 	return Plugin_Handled;
 }
 
-void OpenClassesMenu(int client)
-{
+void OpenClassesMenu(int client) {
 	Menu menu = new Menu(MenuHandler_Classes);
 	menu.SetTitle("Choose a class: (required to move)");
 
@@ -407,26 +408,21 @@ void OpenClassesMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_Classes(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
+public int MenuHandler_Classes(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
 			char sClass[32];
 			menu.GetItem(param2, sClass, sizeof(sClass));
-
 			g_PlayerData[param1].SetClass(sClass);
 		}
-		case MenuAction_End:
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-public Action TF2_OnPlayerDamaged(int victim, TFClassType victimclass, int& attacker, TFClassType attackerclass, int& inflictor, float& damage, int& damagetype, int& weapon, float damageForce[3], float damagePosition[3], int damagecustom, bool alive)
-{
-	if (victim == g_DungeonMaster || victim == attacker)
-	{
+public Action OnTakeDamage(int victim, int& attacker, int& inflictor, float& damage, int& damagetype, int& weapon, float damageForce[3], float damagePosition[3], int damagecustom) {
+	if (victim == g_Master.client || victim == attacker) {
 		damage = 0.0;
 		return Plugin_Changed;
 	}
@@ -434,129 +430,132 @@ public Action TF2_OnPlayerDamaged(int victim, TFClassType victimclass, int& atta
 	return Plugin_Continue;
 }
 
-public void TF2_OnRoundStart(bool full_reset)
-{
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientInGame(i) && GetClientTeam(i) > 1)
-		{
+public void Event_OnRoundStart(Event event, const char[] name, bool dontBroadcast) {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (IsClientInGame(i) && GetClientTeam(i) > 1) {
 			g_PlayerData[i].SetPoints(50);
-			TF2_ChangeClientTeam(i, TFTeam_Red);
+			TF2_SetTeam(i, TFTeam_Red);
 		}
 	}
 	
-	FindDungeonMaster();
+	g_Master.Find();
 }
 
-public void TF2_OnRoundEnd(int team, int winreason, int flagcaplimit, bool full_round, float round_time, int losing_team_num_caps, bool was_sudden_death)
-{
-	switch (team)
-	{
-		case TFTeam_Red:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) != team)
-					TF2_AddCondition(i, TFCond_OnFire, TFCondDuration_Infinite, g_DungeonMaster);
+public void Event_OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
+	int team = event.GetInt("team");
+
+	switch (team) {
+		case TFTeam_Red: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) != team) {
+					TF2_AddCondition(i, TFCond_OnFire, TFCondDuration_Infinite, g_Master.client);
+				}
+			}
 		}
 
-		case TFTeam_Blue:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) != team)
+		case TFTeam_Blue: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i) != team) {
 					TF2_AddCondition(i, TFCond_OnFire, TFCondDuration_Infinite);
+				}
+			}
 		}
 	}
 }
 
-void FindDungeonMaster()
-{
-	g_DungeonMaster = GetRandomClient(true, true, true, 2);
-	//g_DungeonMaster = GetDrixevel();
-	g_ZoneSize = 300.0;
-	
-	if (g_DungeonMaster < 1)
-	{
-		g_DungeonMaster = NO_MASTER;
-		return;
-	}
-	
-	g_PlayerData[g_DungeonMaster].SetPoints(100);
-	TF2_ChangeClientTeam(g_DungeonMaster, TFTeam_Blue);
-	TF2_SetPlayerClass(g_DungeonMaster, TFClass_Engineer);
-	TF2_SentryTarget(g_DungeonMaster, false);
-	
-	CreateTimer(0.2, Timer_Delay);
-}
-
-public Action Timer_Delay(Handle timer)
-{
-	TF2_RemoveCondition(g_DungeonMaster, TFCond_FreezeInput);
-	SetEntityMoveType(g_DungeonMaster, MOVETYPE_NOCLIP);
-	
-	int index = GetWeaponIndexBySlot(g_DungeonMaster, TFWeaponSlot_Secondary);
-	
-	if (index != 140)
-	{
-		TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Secondary);
-		TF2_GiveItem(g_DungeonMaster, "tf_weapon_laser_pointer", 140);
-	}
-	
-	EquipWeaponSlot(g_DungeonMaster, TFWeaponSlot_Secondary);
-	
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Primary);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Melee);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Grenade);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Building);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_PDA);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Item1);
-	TF2_RemoveWeaponSlot(g_DungeonMaster, TFWeaponSlot_Item2);
-	
-	OpenDungeonMasterMenu(g_DungeonMaster);
-}
-
-public void OnGameFrame()
-{
-	if (g_DungeonMaster != NO_MASTER && IsPlayerAlive(g_DungeonMaster))
-	{
-		float vecOrigin[3];
-		GetClientLookOrigin(g_DungeonMaster, vecOrigin);
+public Action Timer_Delay(Handle timer) {
+	if (IsPlayerAlive(g_Master.client)) {
+		TF2_RemoveCondition(g_Master.client, TFCond_FreezeInput);
+		SetEntityMoveType(g_Master.client, MOVETYPE_NOCLIP);
 		
-		TE_SetupBeamRingPoint(vecOrigin, g_ZoneSize, (g_ZoneSize + 0.1), iLaserBeam, iHalo, 0, 10, 0.1, 2.0, 0.0, {50, 50, 255, 255}, 10, 0);
-		TE_SendToClient(g_DungeonMaster);
+		int index = GetWeaponIndexBySlot(g_Master.client, TFWeaponSlot_Secondary);
+		
+		if (index != 140) {
+			TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Secondary);
+			TF2_GiveItem(g_Master.client, "tf_weapon_laser_pointer", 140);
+		}
+		
+		EquipWeaponSlot(g_Master.client, TFWeaponSlot_Secondary);
+		
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Primary);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Melee);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Grenade);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Building);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_PDA);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Item1);
+		TF2_RemoveWeaponSlot(g_Master.client, TFWeaponSlot_Item2);
+		
+		OpenDungeonMasterMenu(g_Master.client);
+	}
+
+	CPrintToChat(g_Master.client, "You are now the Game Master.");
+}
+
+public void OnGameFrame() {
+	if (g_Master.client != NO_MASTER && IsPlayerAlive(g_Master.client)) {
+		float vecOrigin[3];
+		GetClientLookOrigin(g_Master.client, vecOrigin);
+		
+		TE_SetupBeamRingPoint(vecOrigin, g_Master.size, (g_Master.size + 0.1), iLaserBeam, iHalo, 0, 10, 0.1, 2.0, 0.0, {50, 50, 255, 255}, 10, 0);
+		TE_SendToClient(g_Master.client);
 	}
 
 	int entity = -1;
-	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1)
-		if (GetEntProp(entity, Prop_Send, "m_iAmmoShells") < 1 && GetEntPropFloat(entity, Prop_Send, "m_flPercentageConstructed") >= 1.0)
+	while ((entity = FindEntityByClassname(entity, "obj_sentrygun")) != -1) {
+		if (GetEntProp(entity, Prop_Send, "m_iAmmoShells") < 1 && GetEntPropFloat(entity, Prop_Send, "m_flPercentageConstructed") >= 1.0) {
 			SDKHooks_TakeDamage(entity, 0, 0, 99999.0);
+		}
+	}
 }
 
-public Action TF2_OnCallMedic(int client)
-{
-	if (client == g_DungeonMaster)
-	{
-		
+public Action Listener_VoiceMenu(int client, const char[] command, int argc) {
+	if (client == 0 || client > MaxClients || !IsClientInGame(client)) {
+		return Plugin_Continue;
+	}
+
+	char sVoice[32];
+	GetCmdArg(1, sVoice, sizeof(sVoice));
+
+	char sVoice2[32];
+	GetCmdArg(2, sVoice2, sizeof(sVoice2));
+
+	if (StringToInt(sVoice) == 0 && StringToInt(sVoice2) == 0 && client == g_Master.client) {
 		return Plugin_Stop;
 	}
 
 	return Plugin_Continue;
 }
 
-public void TF2_OnButtonPressPost(int client, int button)
-{
-	if ((button & IN_ATTACK2) == IN_ATTACK2 && client == g_DungeonMaster)
+public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed, int mouse[2]) {
+	for (int i = 0; i < MAX_BUTTONS; i++)
 	{
-		g_ZoneSize += 50.0;
+		int button = (1 << i);
 		
-		if (g_ZoneSize >= 600.0)
-			g_ZoneSize = 300.0;
+		if ((buttons & button)) {
+			if (!(g_LastButtons[client] & button)) {
+				OnButtonPress(client, button);
+			}
+		}
+	}
+
+	g_LastButtons[client] = buttons;
+	return Plugin_Continue;
+}
+
+void OnButtonPress(int client, int button) {
+	if ((button & IN_ATTACK2) == IN_ATTACK2 && client == g_Master.client) {
+		g_Master.size += 50.0;
+		
+		if (g_Master.size >= 600.0) {
+			g_Master.size = 300.0;
+		}
 	}
 }
 
-void OpenDungeonMasterMenu(int client)
-{
-	if (g_DungeonMaster != client)
+void OpenDungeonMasterMenu(int client) {
+	if (g_Master.client != client) {
 		return;
+	}
 	
 	Menu menu = new Menu(MenuHandler_DungeonMaster);
 	menu.SetTitle("Dungeon Master");
@@ -570,36 +569,36 @@ void OpenDungeonMasterMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_DungeonMaster(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if (g_DungeonMaster != param1)
+public int MenuHandler_DungeonMaster(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			if (g_Master.client != param1) {
 				return;
+			}
 			
 			char sInfo[32];
 			menu.GetItem(param2, sInfo, sizeof(sInfo));
 
-			if (StrEqual(sInfo, "mobs"))
+			if (StrEqual(sInfo, "mobs")) {
 				OpenMobsMenu(param1);
-			else if (StrEqual(sInfo, "bosses"))
+			} else if (StrEqual(sInfo, "bosses")) {
 				OpenBossesMenu(param1);
-			else if (StrEqual(sInfo, "traps"))
+			} else if (StrEqual(sInfo, "traps")) {
 				OpenTrapsMenu(param1);
-			else if (StrEqual(sInfo, "curses"))
+			} else if (StrEqual(sInfo, "curses")) {
 				OpenCursesMenu(param1);
+			}
 		}
-		case MenuAction_End:
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-void OpenMobsMenu(int client)
-{
-	if (g_DungeonMaster != client)
+void OpenMobsMenu(int client) {
+	if (g_Master.client != client) {
 		return;
+	}
 	
 	Menu menu = new Menu(MenuHandler_SpawnMobs);
 	menu.SetTitle("Spawn a Mob:");
@@ -611,14 +610,12 @@ void OpenMobsMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_SpawnMobs(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if (g_DungeonMaster != param1)
+public int MenuHandler_SpawnMobs(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			if (g_Master.client != param1) {
 				return;
+			}
 			
 			char sInfo[32];
 			menu.GetItem(param2, sInfo, sizeof(sInfo));
@@ -626,29 +623,24 @@ public int MenuHandler_SpawnMobs(Menu menu, MenuAction action, int param1, int p
 			float vecLook[3];
 			GetClientLookOrigin(param1, vecLook);
 
-			if (!IsPlayersNearby(vecLook))
-			{
+			if (!IsPlayersNearby(vecLook)) {
 				EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 				CPrintToChat(param1, "Adventurers must be nearby in order to spawn a mob.");
 				OpenMobsMenu(param1);
 				return;
 			}
 			
-			if (StrEqual(sInfo, "skeletons"))
-			{
-				if (g_PlayerData[param1].RemovePoints(60))
-				{
+			if (StrEqual(sInfo, "skeletons")) {
+				if (g_PlayerData[param1].RemovePoints(60)) {
 					float temp[3];
-					for (int i = 0; i < GetRandomInt(5, 10); i++)
-					{
-						temp[0] = vecLook[0] + GetRandomFloat(-g_ZoneSize / 2, g_ZoneSize / 2);
-						temp[1] = vecLook[1] + GetRandomFloat(-g_ZoneSize / 2, g_ZoneSize / 2);
+					for (int i = 0; i < GetRandomInt(5, 10); i++) {
+						temp[0] = vecLook[0] + GetRandomFloat(-g_Master.size / 2, g_Master.size / 2);
+						temp[1] = vecLook[1] + GetRandomFloat(-g_Master.size / 2, g_Master.size / 2);
 						temp[2] = vecLook[2];
 						
 						int entity = CreateEntityByName("tf_zombie"); 
 						
-						if (IsValidEntity(entity)) 
-						{ 
+						if (IsValidEntity(entity))  { 
 							DispatchSpawn(entity); 
 							TeleportEntity(entity, temp, NULL_VECTOR, NULL_VECTOR);
 							SetEntProp(entity, Prop_Data, "m_iTeamNum", 3);
@@ -656,9 +648,7 @@ public int MenuHandler_SpawnMobs(Menu menu, MenuAction action, int param1, int p
 					}
 
 					CPrintToChat(param1, "You have spawned the mob: Skeletons");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
@@ -666,18 +656,21 @@ public int MenuHandler_SpawnMobs(Menu menu, MenuAction action, int param1, int p
 
 			OpenMobsMenu(param1);
 		}
-		case MenuAction_Cancel:
-			if (param2 == MenuCancel_ExitBack)
+		case MenuAction_Cancel: {
+			if (param2 == MenuCancel_ExitBack) {
 				OpenDungeonMasterMenu(param1);
-		case MenuAction_End:
+			}
+		}
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-void OpenBossesMenu(int client)
-{
-	if (g_DungeonMaster != client)
+void OpenBossesMenu(int client) {
+	if (g_Master.client != client) {
 		return;
+	}
 	
 	Menu menu = new Menu(MenuHandler_SpawnBosses);
 	menu.SetTitle("Spawn a Boss:");
@@ -692,14 +685,12 @@ void OpenBossesMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if (g_DungeonMaster != param1)
+public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			if (g_Master.client != param1) {
 				return;
+			}
 			
 			char sInfo[32];
 			menu.GetItem(param2, sInfo, sizeof(sInfo));
@@ -707,43 +698,33 @@ public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int
 			float vecLook[3];
 			GetClientLookOrigin(param1, vecLook);
 
-			if (!IsPlayersNearby(vecLook))
-			{
+			if (!IsPlayersNearby(vecLook)) {
 				EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 				CPrintToChat(param1, "Adventurers must be nearby in order to spawn a boss.");
 				OpenBossesMenu(param1);
 				return;
 			}
 
-			if (StrEqual(sInfo, "horseman"))
-			{
-				if (g_PlayerData[param1].RemovePoints(250))
-				{
+			if (StrEqual(sInfo, "horseman")) {
+				if (g_PlayerData[param1].RemovePoints(250)) {
 					int entity = CreateEntityByName("headless_hatman"); 
 					
-					if (IsValidEntity(entity)) 
-					{ 
+					if (IsValidEntity(entity)) { 
 						DispatchSpawn(entity); 
 						TeleportEntity(entity, vecLook, NULL_VECTOR, NULL_VECTOR);
 						SetEntProp(entity, Prop_Data, "m_iTeamNum", 3);
 					}
 
 					CPrintToChat(param1, "You have spawned the boss: Horsemann");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
-			}
-			else if (StrEqual(sInfo, "monoculus"))
-			{
-				if (g_PlayerData[param1].RemovePoints(300))
-				{
+			} else if (StrEqual(sInfo, "monoculus")) {
+				if (g_PlayerData[param1].RemovePoints(300)) {
 					int entity = CreateEntityByName("eyeball_boss"); 
 					
-					if (IsValidEntity(entity)) 
-					{
+					if (IsValidEntity(entity)) {
 						vecLook[2] += 250.0;
 						DispatchSpawn(entity); 
 						TeleportEntity(entity, vecLook, NULL_VECTOR, NULL_VECTOR);
@@ -751,21 +732,15 @@ public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int
 					}
 
 					CPrintToChat(param1, "You have spawned the boss: Monoculus");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
-			}
-			else if (StrEqual(sInfo, "skeletonking"))
-			{
-				if (g_PlayerData[param1].RemovePoints(400))
-				{
+			} else if (StrEqual(sInfo, "skeletonking")) {
+				if (g_PlayerData[param1].RemovePoints(400)) {
 					int entity = CreateEntityByName("tf_zombie"); 
 					
-					if (IsValidEntity(entity)) 
-					{ 
+					if (IsValidEntity(entity)) { 
 						DispatchSpawn(entity); 
 						TeleportEntity(entity, vecLook, NULL_VECTOR, NULL_VECTOR);
 						SetEntProp(entity, Prop_Data, "m_iHealth", 3000.0);
@@ -777,30 +752,22 @@ public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int
 					}
 
 					CPrintToChat(param1, "You have spawned the boss: Skeleton King");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
-			}
-			else if (StrEqual(sInfo, "merasmus"))
-			{
-				if (g_PlayerData[param1].RemovePoints(500))
-				{
+			} else if (StrEqual(sInfo, "merasmus")) {
+				if (g_PlayerData[param1].RemovePoints(500)) {
 					int entity = CreateEntityByName("merasmus"); 
 					
-					if (IsValidEntity(entity)) 
-					{ 
+					if (IsValidEntity(entity)) { 
 						DispatchSpawn(entity); 
 						TeleportEntity(entity, vecLook, NULL_VECTOR, NULL_VECTOR);
 						SetEntProp(entity, Prop_Data, "m_iTeamNum", 3);
 					}
 
 					CPrintToChat(param1, "You have spawned the boss: Merasmus");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
@@ -808,17 +775,24 @@ public int MenuHandler_SpawnBosses(Menu menu, MenuAction action, int param1, int
 
 			OpenBossesMenu(param1);
 		}
-		case MenuAction_Cancel:
-			if (param2 == MenuCancel_ExitBack)
+		case MenuAction_Cancel: {
+			if (param2 == MenuCancel_ExitBack) {
 				OpenDungeonMasterMenu(param1);
-		case MenuAction_End:
+			}
+		}
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-void AttachHat(int entity)
-{
+void AttachHat(int entity) {
 	int hat = CreateEntityByName("prop_dynamic_override");
+
+	if (!IsValidEntity(hat)) {
+		return;
+	}
+
 	DispatchKeyValue(hat, "model", "models/player/items/demo/crown.mdl");
 	DispatchKeyValue(hat, "spawnflags", "256");
 	DispatchKeyValue(hat, "solid", "0");
@@ -841,8 +815,7 @@ void AttachHat(int entity)
 	TeleportEntity(hat, hatpos, NULL_VECTOR, NULL_VECTOR);
 }
 
-void ResizeHitbox(int entity, float fScale)
-{
+void ResizeHitbox(int entity, float fScale) {
 	float vecBossMin[3], vecBossMax[3];
 	GetEntPropVector(entity, Prop_Send, "m_vecMins", vecBossMin);
 	GetEntPropVector(entity, Prop_Send, "m_vecMaxs", vecBossMax);
@@ -859,10 +832,10 @@ void ResizeHitbox(int entity, float fScale)
 	SetEntPropVector(entity, Prop_Send, "m_vecMaxs", vecScaledBossMax);
 }
 
-void OpenTrapsMenu(int client)
-{
-	if (g_DungeonMaster != client)
+void OpenTrapsMenu(int client) {
+	if (g_Master.client != client) {
 		return;
+	}
 	
 	Menu menu = new Menu(MenuHandler_SpawnTraps);
 	menu.SetTitle("Spawn a Trap:");
@@ -876,14 +849,12 @@ void OpenTrapsMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_SpawnTraps(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if (g_DungeonMaster != param1)
+public int MenuHandler_SpawnTraps(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			if (g_Master.client != param1) {
 				return;
+			}
 			
 			char sInfo[32];
 			menu.GetItem(param2, sInfo, sizeof(sInfo));
@@ -891,61 +862,49 @@ public int MenuHandler_SpawnTraps(Menu menu, MenuAction action, int param1, int 
 			float vecLook[3];
 			GetClientLookOrigin(param1, vecLook);
 
-			if (!IsPlayersNearby(vecLook))
-			{
+			if (!IsPlayersNearby(vecLook)) {
 				EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 				CPrintToChat(param1, "Adventurers must be nearby in order to spawn a trap.");
 				OpenBossesMenu(param1);
 				return;
 			}
 
-			if (StrEqual(sInfo, "mini_sentry"))
-			{
-				if (g_PlayerData[param1].RemovePoints(250))
-				{
+			if (StrEqual(sInfo, "mini_sentry")) {
+				if (g_PlayerData[param1].RemovePoints(250)) {
 					int sentry = TF2_SpawnSentry(-1, vecLook, view_as<float>({0.0, 0.0, 0.0}), TFTeam_Blue, 0, true, false);
 
-					if (IsValidEntity(sentry))
+					if (IsValidEntity(sentry)) {
 						CreateTimer(10.0, Timer_DestroyBuilding, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
+					}
 
 					CPrintToChat(param1, "You have spawned the trap: Mini Sentry");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
-			}
-			else if (StrEqual(sInfo, "sentry"))
-			{
-				if (g_PlayerData[param1].RemovePoints(500))
-				{
+			} else if (StrEqual(sInfo, "sentry")) {
+				if (g_PlayerData[param1].RemovePoints(500)) {
 					int sentry = TF2_SpawnSentry(-1, vecLook, view_as<float>({0.0, 0.0, 0.0}), TFTeam_Blue, 2, false, false);
 
-					if (IsValidEntity(sentry))
+					if (IsValidEntity(sentry)) {
 						CreateTimer(10.0, Timer_DestroyBuilding, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
+					}
 					
 					CPrintToChat(param1, "You have spawned the trap: Sentry");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
-			}
-			else if (StrEqual(sInfo, "controlled_sentry"))
-			{
-				if (g_PlayerData[param1].RemovePoints(1000))
-				{
+			} else if (StrEqual(sInfo, "controlled_sentry")) {
+				if (g_PlayerData[param1].RemovePoints(1000)) {
 					int sentry = TF2_SpawnSentry(param1, vecLook, view_as<float>({0.0, 0.0, 0.0}), TFTeam_Blue, 2, false, false);
 
-					if (IsValidEntity(sentry))
+					if (IsValidEntity(sentry)) {
 						CreateTimer(10.0, Timer_DestroyBuilding, EntIndexToEntRef(sentry), TIMER_FLAG_NO_MAPCHANGE);
+					}
 					
 					CPrintToChat(param1, "You have spawned the trap: Controlled Sentry");
-				}
-				else
-				{
+				} else {
 					EmitGameSoundToClient(param1, "Player.DenyWeaponSelection");
 					CPrintToChat(param1, "You don't have enough points necessary.");
 				}
@@ -953,18 +912,21 @@ public int MenuHandler_SpawnTraps(Menu menu, MenuAction action, int param1, int 
 			
 			OpenTrapsMenu(param1);
 		}
-		case MenuAction_Cancel:
-			if (param2 == MenuCancel_ExitBack)
+		case MenuAction_Cancel: {
+			if (param2 == MenuCancel_ExitBack) {
 				OpenDungeonMasterMenu(param1);
-		case MenuAction_End:
+			}
+		}
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-void OpenCursesMenu(int client)
-{
-	if (g_DungeonMaster != client)
+void OpenCursesMenu(int client) {
+	if (g_Master.client != client) {
 		return;
+	}
 	
 	Menu menu = new Menu(MenuHandler_SpawnCurses);
 	menu.SetTitle("Spawn a Curse:");
@@ -984,20 +946,17 @@ void OpenCursesMenu(int client)
 	menu.Display(client, MENU_TIME_FOREVER);
 }
 
-public int MenuHandler_SpawnCurses(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_Select:
-		{
-			if (g_DungeonMaster != param1)
+public int MenuHandler_SpawnCurses(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			if (g_Master.client != param1) {
 				return;
+			}
 			
 			char sInfo[32];
 			menu.GetItem(param2, sInfo, sizeof(sInfo));
 
-			if (g_PlayerData[param1].curses < 1)
-			{
+			if (g_PlayerData[param1].curses < 1) {
 				OpenCursesMenu(param1);
 				return;
 			}
@@ -1007,43 +966,46 @@ public int MenuHandler_SpawnCurses(Menu menu, MenuAction action, int param1, int
 
 			OpenCursesMenu(param1);
 		}
-		case MenuAction_Cancel:
-			if (param2 == MenuCancel_ExitBack)
+		case MenuAction_Cancel: {
+			if (param2 == MenuCancel_ExitBack) {
 				OpenDungeonMasterMenu(param1);
-		case MenuAction_End:
+			}
+		}
+
+		case MenuAction_End: {
 			delete menu;
+		}
 	}
 }
 
-bool IsPlayersNearby(float origin[3])
-{
+bool IsPlayersNearby(float origin[3]) {
 	float vecOrigin[3];
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != 2)
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != 2) {
 			continue;
+		}
 		
 		GetClientAbsOrigin(i, vecOrigin);
 
-		if (GetVectorDistance(vecOrigin, origin) <= convar_DistanceCheck.FloatValue)
+		if (GetVectorDistance(vecOrigin, origin) <= convar_DistanceCheck.FloatValue) {
 			return true;
+		}
 	}
 
 	return false;
 }
 
-public Action Timer_DestroyBuilding(Handle timer, any data)
-{
+public Action Timer_DestroyBuilding(Handle timer, any data) {
 	int entity = -1;
-	if ((entity = EntRefToEntIndex(data)) == -1)
+	if ((entity = EntRefToEntIndex(data)) == -1) {
 		return Plugin_Stop;
+	}
 	
 	SDKHooks_TakeDamage(entity, 0, 0, 99999.0);
 	return Plugin_Stop;
 }
 
-enum
-{
+enum {
 	Curse_Poverty = 1,
 	Curse_Ember = 2,
 	Curse_Desolation = 3,
@@ -1062,116 +1024,120 @@ enum
 #define	SHAKE_START_RUMBLEONLY 4	// Starts a shake effect that only rumbles the controller, no screen effect.
 #define	SHAKE_START_NORUMBLE 5		// Starts a shake that does NOT rumble the controller.
 
-void SpawnCurse(int curse_id)
-{
-	switch(curse_id)
-	{
-		case Curse_Poverty:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (i != g_DungeonMaster)
+void SpawnCurse(int curse_id) {
+	switch(curse_id) {
+		case Curse_Poverty: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (i != g_Master.client) {
 					g_PlayerData[i].SetPoints(0);
+				}
+			}
 		}
-		case Curse_Ember:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
-					TF2_IgnitePlayer(i, g_DungeonMaster);
+		case Curse_Ember: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
+					TF2_IgnitePlayer(i, g_Master.client);
+				}
+			}
 		}
-		case Curse_Desolation:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
+		case Curse_Desolation: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
 					SetEntityHealth(i, GetClientHealth(i) / 2);
+				}
+			}
 		}
-		case Curse_Prison:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
-					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_BIGBONK, g_DungeonMaster);
+		case Curse_Prison: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
+					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_BIGBONK, g_Master.client);
+				}
+			}
 		}
-		case Curse_Horror:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
-					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_GHOSTSCARE, g_DungeonMaster);
+		case Curse_Horror: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
+					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_GHOSTSCARE, g_Master.client);
+				}
+			}
 		}
-		case Curse_Delirium:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
+		case Curse_Delirium: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
 					ScreenShake(i, SHAKE_START, 50.0, 150.0, 10.0);
+				}
+			}
 		}
-		case Curse_Poison:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
-					TF2_MakeBleed(i, g_DungeonMaster, 10.0);
+		case Curse_Poison: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
+					TF2_MakeBleed(i, g_Master.client, 10.0);
+				}
+			}
 		}
-		case Curse_Chains:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
-					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_LOSERSTATE, g_DungeonMaster);
+		case Curse_Chains: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
+					TF2_StunPlayer(i, 10.0, 0.0, TF_STUNFLAGS_LOSERSTATE, g_Master.client);
+				}
+			}
 		}
-		case Curse_Glaciers:
-		{
-			for (int i = 1; i <= MaxClients; i++)
-				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_DungeonMaster)
+		case Curse_Glaciers: {
+			for (int i = 1; i <= MaxClients; i++) {
+				if (IsClientInGame(i) && IsPlayerAlive(i) && i != g_Master.client) {
 					ServerCommand("sm_freeze #%i 10.0", GetClientUserId(i));
+				}
+			}
 		}
 	}
 }
 
-public void OnEntityCreated(int entity, const char[] classname)
-{
-	if (StrEqual(classname, "trigger_capture_area", false))
-	{
+public void OnEntityCreated(int entity, const char[] classname) {
+	if (StrEqual(classname, "trigger_capture_area", false)) {
 		SDKHook(entity, SDKHook_StartTouch, OnTriggerTouch);
 		SDKHook(entity, SDKHook_Touch, OnTriggerTouch);
 		SDKHook(entity, SDKHook_EndTouch, OnTriggerTouch);
 	}
 }
 
-public Action OnTriggerTouch(int entity, int other)
-{
-	if (other < 0)
+public Action OnTriggerTouch(int entity, int other) {
+	if (other < 0) {
 		return Plugin_Continue;
+	}
 	
-	if (other > MaxClients)
-	{
+	if (other > MaxClients) {
 		char class[32];
 		GetEntityClassname(other, class, sizeof(class));
 
-		if (StrEqual(class, "headless_hatman", false) || StrEqual(class, "merasmus", false))
+		if (StrEqual(class, "headless_hatman", false) || StrEqual(class, "merasmus", false)) {
 			AcceptEntityInput(other, "Kill");
+		}
 			
 		return Plugin_Continue;
 	}
 	
-	if (other == g_DungeonMaster)
+	if (other == g_Master.client) {
 		return Plugin_Stop;
+	}
 	
 	return Plugin_Continue;
 }
 
-stock void TF2_RemoveAllWearables(int client)
-{
+void TF2_RemoveAllWearables(int client) {
 	int entity;
-	while ((entity = FindEntityByClassname(entity, "tf_wearable*")) != -1)
-		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client)
+	while ((entity = FindEntityByClassname(entity, "tf_wearable*")) != -1) {
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == client) {
 			TF2_RemoveWearable(client, entity);
+		}
+	}
 }
 
-stock int TF2_GiveItem(int client, char[] classname, int index, TF2Quality quality = TF2Quality_Normal, int level = 0, const char[] attributes = "")
-{
+int TF2_GiveItem(int client, char[] classname, int index, TF2Quality quality = TF2Quality_Normal, int level = 0, const char[] attributes = "") {
 	char sClass[64];
 	strcopy(sClass, sizeof(sClass), classname);
 	
-	if (StrContains(sClass, "saxxy", false) != -1)
-	{
-		switch (TF2_GetPlayerClass(client))
-		{
+	if (StrContains(sClass, "saxxy", false) != -1) {
+		switch (TF2_GetPlayerClass(client)) {
 			case TFClass_Scout: strcopy(sClass, sizeof(sClass), "tf_weapon_bat");
 			case TFClass_Sniper: strcopy(sClass, sizeof(sClass), "tf_weapon_club");
 			case TFClass_Soldier: strcopy(sClass, sizeof(sClass), "tf_weapon_shovel");
@@ -1182,11 +1148,8 @@ stock int TF2_GiveItem(int client, char[] classname, int index, TF2Quality quali
 			case TFClass_Spy: strcopy(sClass, sizeof(sClass), "tf_weapon_knife");
 			case TFClass_Medic: strcopy(sClass, sizeof(sClass), "tf_weapon_bonesaw");
 		}
-	}
-	else if (StrContains(sClass, "shotgun", false) != -1)
-	{
-		switch (TF2_GetPlayerClass(client))
-		{
+	} else if (StrContains(sClass, "shotgun", false) != -1) {
+		switch (TF2_GetPlayerClass(client)) {
 			case TFClass_Soldier: strcopy(sClass, sizeof(sClass), "tf_weapon_shotgun_soldier");
 			case TFClass_Pyro: strcopy(sClass, sizeof(sClass), "tf_weapon_shotgun_pyro");
 			case TFClass_Heavy: strcopy(sClass, sizeof(sClass), "tf_weapon_shotgun_hwg");
@@ -1203,25 +1166,23 @@ stock int TF2_GiveItem(int client, char[] classname, int index, TF2Quality quali
 	char sAttrs[32][32];
 	int count = ExplodeString(attributes, " ; ", sAttrs, 32, 32);
 	
-	if (count > 1)
-	{
+	if (count > 1) {
 		TF2Items_SetNumAttributes(item, count / 2);
 		
 		int i2;
-		for (int i = 0; i < count; i += 2)
-		{
+		for (int i = 0; i < count; i += 2) {
 			TF2Items_SetAttribute(item, i2, StringToInt(sAttrs[i]), StringToFloat(sAttrs[i + 1]));
 			i2++;
 		}
 	}
-	else
+	else {
 		TF2Items_SetNumAttributes(item, 0);
+	}
 
 	int weapon = TF2Items_GiveNamedItem(client, item);
 	delete item;
 	
-	if (StrEqual(sClass, "tf_weapon_builder", false) || StrEqual(sClass, "tf_weapon_sapper", false))
-	{
+	if (StrEqual(sClass, "tf_weapon_builder", false) || StrEqual(sClass, "tf_weapon_sapper", false)) {
 		SetEntProp(weapon, Prop_Send, "m_iObjectType", 3);
 		SetEntProp(weapon, Prop_Data, "m_iSubType", 3);
 		SetEntProp(weapon, Prop_Send, "m_aBuildableObjectTypes", 0, _, 0);
@@ -1230,21 +1191,21 @@ stock int TF2_GiveItem(int client, char[] classname, int index, TF2Quality quali
 		SetEntProp(weapon, Prop_Send, "m_aBuildableObjectTypes", 1, _, 3);
 	}
 	
-	if (StrContains(sClass, "tf_weapon_", false) == 0)
+	if (StrContains(sClass, "tf_weapon_", false) == 0) {
 		EquipPlayerWeapon(client, weapon);
+	}
 	
 	return weapon;
 }
 
-stock int GetRandomClient(bool ingame = true, bool alive = false, bool fake = false, int team = 0)
-{
+int GetRandomClient(bool ingame = true, bool alive = false, bool fake = false, int team = 0) {
 	int[] clients = new int[MaxClients];
 	int amount;
 
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (ingame && !IsClientInGame(i) || alive && !IsPlayerAlive(i) || !fake && IsFakeClient(i) || team > 0 && team != GetClientTeam(i))
+	for (int i = 1; i <= MaxClients; i++) {
+		if (ingame && !IsClientInGame(i) || alive && !IsPlayerAlive(i) || !fake && IsFakeClient(i) || team > 0 && team != GetClientTeam(i)) {
 			continue;
+		}
 
 		clients[amount++] = i;
 	}
@@ -1252,40 +1213,38 @@ stock int GetRandomClient(bool ingame = true, bool alive = false, bool fake = fa
 	return (amount == 0) ? -1 : clients[GetRandomInt(0, amount - 1)];
 }
 
-stock void TF2_SentryTarget(int client, bool target = true)
-{
+void TF2_SentryTarget(int client, bool target = true) {
 	SetEntityFlags(client, !target ? (GetEntityFlags(client) | FL_NOTARGET) : (GetEntityFlags(client) &~ FL_NOTARGET));
 }
 
-stock int GetWeaponIndexBySlot(int client, int slot)
-{
-	if (client == 0 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client))
+int GetWeaponIndexBySlot(int client, int slot) {
+	if (client == 0 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client)) {
 		return -1;
+	}
 
 	int weapon = GetPlayerWeaponSlot(client, slot);
 	
-	if (!IsValidEntity(weapon))
+	if (!IsValidEntity(weapon)) {
 		return -1;
+	}
 
 	return GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
 }
 
-stock void EquipWeaponSlot(int client, int slot)
-{
+void EquipWeaponSlot(int client, int slot) {
 	int iWeapon = GetPlayerWeaponSlot(client, slot);
 	
-	if (IsValidEntity(iWeapon))
-	{
+	if (IsValidEntity(iWeapon)) {
 		char class[64];
 		GetEntityClassname(iWeapon, class, sizeof(class));
 		FakeClientCommand(client, "use %s", class);
 	}
 }
 
-stock bool GetClientLookOrigin(int client, float pOrigin[3], bool filter_players = true, float distance = 35.0)
-{
-	if (client == 0 || client > MaxClients || !IsClientInGame(client))
+bool GetClientLookOrigin(int client, float pOrigin[3], bool filter_players = true, float distance = 35.0) {
+	if (client == 0 || client > MaxClients || !IsClientInGame(client)) {
 		return false;
+	}
 
 	float vOrigin[3];
 	GetClientEyePosition(client,vOrigin);
@@ -1296,8 +1255,7 @@ stock bool GetClientLookOrigin(int client, float pOrigin[3], bool filter_players
 	Handle trace = TR_TraceRayFilterEx(vOrigin, vAngles, MASK_SHOT, RayType_Infinite, filter_players ? TraceEntityFilterPlayer : TraceEntityFilterNone, client);
 	bool bReturn = TR_DidHit(trace);
 
-	if (bReturn)
-	{
+	if (bReturn) {
 		float vStart[3];
 		TR_GetEndPosition(vStart, trace);
 
@@ -1313,30 +1271,27 @@ stock bool GetClientLookOrigin(int client, float pOrigin[3], bool filter_players
 	return bReturn;
 }
 
-public bool TraceEntityFilterPlayer(int entity, int contentsMask, any data)
-{
+public bool TraceEntityFilterPlayer(int entity, int contentsMask, any data) {
 	return entity > MaxClients || !entity;
 }
 
-public bool TraceEntityFilterNone(int entity, int contentsMask, any data)
-{
+public bool TraceEntityFilterNone(int entity, int contentsMask, any data) {
 	return entity != data;
 }
 
-stock int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam team = TFTeam_Unassigned, int level = 0, bool mini = false, bool disposable = false)
-{
+int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam team = TFTeam_Unassigned, int level = 0, bool mini = false, bool disposable = false) {
 	static const float m_vecMinsMini[3] = {-15.0, -15.0, 0.0}, m_vecMaxsMini[3] = {15.0, 15.0, 49.5};
 	static const float m_vecMinsDisp[3] = {-13.0, -13.0, 0.0}, m_vecMaxsDisp[3] = {13.0, 13.0, 42.9};
 	
 	int sentry = CreateEntityByName("obj_sentrygun");
 	
-	if (IsValidEntity(sentry))
-	{
+	if (IsValidEntity(sentry)) {
 		char sLevel[12];
 		IntToString(level, sLevel, sizeof(sLevel));
 		
-		if (builder > 0)
+		if (builder > 0) {
 			AcceptEntityInput(sentry, "SetBuilder", builder);
+		}
 
 		SetVariantInt(view_as<int>(team));
 		AcceptEntityInput(sentry, "SetTeam");
@@ -1347,14 +1302,12 @@ stock int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam
 		DispatchKeyValue(sentry, "spawnflags", "4");
 		SetEntProp(sentry, Prop_Send, "m_bBuilding", 1);
 		
-		if (mini || disposable)
-		{
+		if (mini || disposable) {
 			SetEntProp(sentry, Prop_Send, "m_bMiniBuilding", 1);
 			SetEntProp(sentry, Prop_Send, "m_nSkin", level == 0 ? view_as<int>(team) : view_as<int>(team) - 2);
 		}
 		
-		if (mini)
-		{
+		if (mini) {
 			DispatchSpawn(sentry);
 			
 			SetVariantInt(100);
@@ -1363,9 +1316,7 @@ stock int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam
 			SetEntPropFloat(sentry, Prop_Send, "m_flModelScale", 0.75);
 			SetEntPropVector(sentry, Prop_Send, "m_vecMins", m_vecMinsMini);
 			SetEntPropVector(sentry, Prop_Send, "m_vecMaxs", m_vecMaxsMini);
-		}
-		else if (disposable)
-		{
+		} else if (disposable) {
 			SetEntProp(sentry, Prop_Send, "m_bDisposableBuilding", 1);
 			DispatchSpawn(sentry);
 			
@@ -1375,9 +1326,7 @@ stock int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam
 			SetEntPropFloat(sentry, Prop_Send, "m_flModelScale", 0.60);
 			SetEntPropVector(sentry, Prop_Send, "m_vecMins", m_vecMinsDisp);
 			SetEntPropVector(sentry, Prop_Send, "m_vecMaxs", m_vecMaxsDisp);
-		}
-		else
-		{
+		} else {
 			SetEntProp(sentry, Prop_Send, "m_nSkin", view_as<int>(team) - 2);
 			DispatchSpawn(sentry);
 		}
@@ -1386,28 +1335,27 @@ stock int TF2_SpawnSentry(int builder, float Position[3], float Angle[3], TFTeam
 	return sentry;
 }
 
-stock bool ScreenShake(int client, int command = SHAKE_START, float amplitude = 50.0, float frequency = 150.0, float duration = 3.0)
-{
-	if (amplitude <= 0.0)
+bool ScreenShake(int client, int command = SHAKE_START, float amplitude = 50.0, float frequency = 150.0, float duration = 3.0) {
+	if (amplitude <= 0.0) {
 		return false;
+	}
 		
-	if (command == SHAKE_STOP)
+	if (command == SHAKE_STOP) {
 		amplitude = 0.0;
+	}
 
 	Handle userMessage = StartMessageOne("Shake", client);
 
-	if (userMessage == null)
+	if (userMessage == null) {
 		return false;
+	}
 
-	if (GetFeatureStatus(FeatureType_Native, "GetUserMessageType") == FeatureStatus_Available && GetUserMessageType() == UM_Protobuf)
-	{
+	if (GetFeatureStatus(FeatureType_Native, "GetUserMessageType") == FeatureStatus_Available && GetUserMessageType() == UM_Protobuf) {
 		PbSetInt(userMessage, "command", command);
 		PbSetFloat(userMessage, "local_amplitude", amplitude);
 		PbSetFloat(userMessage, "frequency", frequency);
 		PbSetFloat(userMessage, "duration", duration);
-	}
-	else
-	{
+	} else {
 		BfWriteByte(userMessage, command);		// Shake Command
 		BfWriteFloat(userMessage, amplitude);	// shake magnitude/amplitude
 		BfWriteFloat(userMessage, frequency);	// shake noise frequency
@@ -1415,5 +1363,42 @@ stock bool ScreenShake(int client, int command = SHAKE_START, float amplitude = 
 	}
 
 	EndMessage();
+	return true;
+}
+
+public Action Command_SetMaster(int client, int args) {
+	if (args > 0) {
+		char sTarget[MAX_TARGET_LENGTH];
+		GetCmdArgString(sTarget, sizeof(sTarget));
+		int target = FindTarget(client, sTarget, true, false);
+		if (target < 1) {
+			ReplyToCommand(client, "Target '%s' not found, please try again.", sTarget);
+			return Plugin_Handled;
+		}
+		g_Master.Set(target);
+		ReplyToCommand(client, "Setting %N to Game Master...", target);
+	} else {
+		ReplyToCommand(client, "Setting Game Master to a random target...");
+		g_Master.Find();
+	}
+	return Plugin_Handled;
+}
+
+void Call_Wearable(int client, int entity) {
+	if (g_hSDKEquipWearable != null) {
+		SDKCall(g_hSDKEquipWearable, client, entity);
+	}
+}
+
+bool TF2_SetTeam(int client, TFTeam team) {
+	if (client == 0 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client) || team < TFTeam_Red || team > TFTeam_Blue) {
+		return false;
+	}
+
+	int lifestate = GetEntProp(client, Prop_Send, "m_lifeState");
+	SetEntProp(client, Prop_Send, "m_lifeState", 2);
+	ChangeClientTeam(client, view_as<int>(team));
+	SetEntProp(client, Prop_Send, "m_lifeState", lifestate);
+	
 	return true;
 }
