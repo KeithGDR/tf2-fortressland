@@ -10,6 +10,7 @@
 #define PLUGIN_VERSION "1.0.3"
 
 #define NO_MASTER -1
+#define NO_CLASS -1
 
 #define	SHAKE_START 0				// Starts the screen shake for all players within the radius.
 #define	SHAKE_STOP 1				// Stops the screen shake for all players within the radius.
@@ -317,6 +318,34 @@ int g_LastButtons[MAXPLAYERS + 1];
 
 bool g_Late;
 
+enum struct Class {
+	char name[MAX_NAME_LENGTH];
+	TFClassType class;
+
+	void Add(const char[] name, TFClassType class) {
+		strcopy(this.name, sizeof(Class::name), name);
+		this.class = class;
+	}
+}
+
+#define MAX_CLASES 64
+Class g_Classes[MAX_CLASES];
+int g_TotalClasses;
+
+enum struct Upgrade {
+	char name[MAX_NAME_LENGTH];
+	int class;
+
+	void Add(const char[] name, int class) {
+		strcopy(this.name, sizeof(Upgrade::name), name);
+		this.class = class;
+	}
+}
+
+#define MAX_UPGRADES 256
+Upgrade g_Upgrades[MAX_UPGRADES];
+int g_TotalUpgrades;
+
 /*****************************/
 //Plugin Info
 public Plugin myinfo = {
@@ -336,9 +365,21 @@ public void OnPluginStart() {
 	convar_DistanceCheck = CreateConVar("sm_fortressland_distancecheck", "3000.0");
 
 	RegConsoleCmd("sm_classes", Command_Classes, "Opens the classes menu.");
+	RegConsoleCmd("sm_upgrades", Command_Upgrades, "Opens the upgrades menu.");
 	RegAdminCmd("sm_setmaster", Command_SetMaster, ADMFLAG_ROOT, "Sets a player to game master.");
 
 	g_PointsHud = new Hud();
+
+	g_Classes[g_TotalClasses++].Add("knight", TFClass_DemoMan);
+	g_Classes[g_TotalClasses++].Add("fighter", TFClass_Heavy);
+	g_Classes[g_TotalClasses++].Add("outrider", TFClass_Scout);
+	g_Classes[g_TotalClasses++].Add("ranger", TFClass_Sniper);
+	g_Classes[g_TotalClasses++].Add("cleric", TFClass_Medic);
+	g_Classes[g_TotalClasses++].Add("rogue", TFClass_Spy);
+	g_Classes[g_TotalClasses++].Add("mage", TFClass_Pyro);
+	g_Classes[g_TotalClasses++].Add("samurai", TFClass_Soldier);
+
+	ParseUpgrades();
 	
 	CreateTimer(0.1, Timer_UpdateHud, _, TIMER_REPEAT);
 
@@ -388,6 +429,45 @@ public void OnPluginStart() {
 		ServerCommand("mp_restartgame 1");
 		//StartRound();
 	}
+}
+
+void ParseUpgrades() {
+	int class = NO_CLASS;
+	g_Upgrades[g_TotalUpgrades++].Add("Health Regen", class);
+	
+	class = GetClass("knight");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("fighter");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("outrider");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("ranger");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("cleric");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("rogue");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("mage");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+
+	class = GetClass("samurai");
+	g_Upgrades[g_TotalUpgrades++].Add("", class);
+}
+
+int GetClass(const char[] class) {
+	for (int i = 0; i < g_TotalClasses; i++) {
+		if (StrEqual(g_Classes[i].name, class, false)) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 public void OnConfigsExecuted() {
@@ -1573,4 +1653,27 @@ bool TF2_SetTeam(int client, TFTeam team) {
 	SetEntProp(client, Prop_Send, "m_lifeState", lifestate);
 	
 	return true;
+}
+
+public Action Command_Upgrades(int client, int args) {
+	OpenUpgradesMenu(client);
+	return Plugin_Handled;
+}
+
+void OpenUpgradesMenu(int client) {
+	Menu menu = new Menu(MenuHandler_Upgrades);
+
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int MenuHandler_Upgrades(Menu menu, MenuAction action, int param1, int param2) {
+	switch (action) {
+		case MenuAction_Select: {
+			
+		}
+		
+		case MenuAction_End: {
+			delete menu;
+		}
+	}
 }
